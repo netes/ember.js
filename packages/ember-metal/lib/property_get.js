@@ -4,12 +4,16 @@
 
 import Ember from 'ember-metal/core';
 import { assert } from 'ember-metal/debug';
+import isEnabled from 'ember-metal/features';
 import EmberError from 'ember-metal/error';
 import {
   isGlobal as detectIsGlobal,
   isPath,
   hasThis as pathHasThis
 } from 'ember-metal/path_cache';
+import {
+  peekMeta
+} from 'ember-metal/meta';
 
 var FIRST_KEY = /^([^\.]+)/;
 
@@ -56,10 +60,11 @@ export function get(obj, keyName) {
     return obj;
   }
 
-  var value = obj[keyName];
-  var desc = (value !== null && typeof value === 'object' && value.isDescriptor) ? value : undefined;
-  var ret;
+  let meta = peekMeta(obj);
 
+  // soon, obj[keyName] will be the primary branch, as it will include normal
+  // values and descriptor based values
+  let desc = meta && meta.peekDescs(keyName);
   if (desc === undefined && isPath(keyName)) {
     return _getPath(obj, keyName);
   }
@@ -67,7 +72,17 @@ export function get(obj, keyName) {
   if (desc) {
     return desc.get(obj, keyName);
   } else {
-    ret = value;
+    let ret;
+    let value = obj[keyName];
+    if (isEnabled('mandatory-setter')) {
+      if (meta && meta.peekWatching(keyName) > 0) {
+        ret = meta.peekValues(keyName);
+      } else {
+        ret = value;
+      }
+    } else {
+      ret = value;
+    }
 
     if (ret === undefined &&
         'object' === typeof obj && !(keyName in obj) && 'function' === typeof obj.unknownProperty) {
