@@ -136,7 +136,9 @@ export function defineProperty(obj, keyName, desc, data/*, meta*/) {
         return metaFor(this).peekDescs(keyName).get(this, keyName);
       },
       set(value) {
-        return metaFor(this).peekDescs(keyName).set(this, keyName, value);
+        // throw TypeError('Sorry this isnt supported "right now"');
+        delete obj[keyName];
+        obj[keyName] = value;
       }
     });
 
@@ -157,7 +159,7 @@ export function defineProperty(obj, keyName, desc, data/*, meta*/) {
     if (desc.setup) { desc.setup(obj, keyName); }
   } else {
     // add insert undefined subroutine, to do this more efficiently
-
+    meta.writeDescs(keyName, false);
     if (desc == null) {
       if (isEnabled('mandatory-setter')) {
         if (watching) {
